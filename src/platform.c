@@ -83,21 +83,24 @@ GLFWbool _glfwSelectPlatform(int desiredID, _GLFWplatform* platform)
         return GLFW_FALSE;
     }
 
-#if defined(_GLFW_WAYLAND) && defined(_GLFW_X11)
-    if (desiredID == GLFW_ANY_PLATFORM)
+    // Ignore any platform requested via glfwInitHint(GLFW_PLATFORM, ...) and
+    // always derive the platform from XDG_SESSION_TYPE instead: prefer Wayland
+    // when the session is Wayland, fall back to X11 otherwise.
     {
         const char* const session = getenv("XDG_SESSION_TYPE");
-        if (session)
-        {
-            // Only follow XDG_SESSION_TYPE if it is set correctly and the
-            // environment looks plausble; otherwise fall back to detection
-            if (strcmp(session, "wayland") == 0 && getenv("WAYLAND_DISPLAY"))
-                desiredID = GLFW_PLATFORM_WAYLAND;
-            else if (strcmp(session, "x11") == 0 && getenv("DISPLAY"))
-                desiredID = GLFW_PLATFORM_X11;
-        }
-    }
+
+        desiredID = GLFW_ANY_PLATFORM;
+
+#if defined(_GLFW_WAYLAND)
+        if (session && strcmp(session, "wayland") == 0 && getenv("WAYLAND_DISPLAY"))
+            desiredID = GLFW_PLATFORM_WAYLAND;
 #endif
+#if defined(_GLFW_X11)
+        if (desiredID == GLFW_ANY_PLATFORM &&
+            session && strcmp(session, "x11") == 0 && getenv("DISPLAY"))
+            desiredID = GLFW_PLATFORM_X11;
+#endif
+    }
 
     if (desiredID == GLFW_ANY_PLATFORM)
     {
